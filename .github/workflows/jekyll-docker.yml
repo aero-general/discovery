@@ -31,6 +31,7 @@ jobs:
           required=(
             index.html
             lighthouserc.json
+            lighthouserc-desktop.json
             assets/adaptive-wizard.css
             assets/adaptive-questions.js
             assets/adaptive-wizard.js
@@ -67,6 +68,7 @@ jobs:
           find assets -maxdepth 1 -type f -name '*.js' -print0 | sort -z | xargs -0 -n1 node --check
           python3 -m json.tool knowledge/aero-knowledge.json >/dev/null
           python3 -m json.tool lighthouserc.json >/dev/null
+          python3 -m json.tool lighthouserc-desktop.json >/dev/null
           python3 - <<'PY'
           import json
           from pathlib import Path
@@ -159,9 +161,42 @@ jobs:
           done
           cat /tmp/aero-http.log
           exit 1
-      - name: Run Chrome Lighthouse CI
+      - name: Run mobile Chrome Lighthouse CI
         shell: bash
         run: npx --yes @lhci/cli@0.14.0 autorun --config=./lighthouserc.json
+      - name: Run desktop Chrome Lighthouse CI
+        shell: bash
+        run: npx --yes @lhci/cli@0.14.0 autorun --config=./lighthouserc-desktop.json
+      - name: Print Lighthouse score summary
+        if: always()
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          for profile in ('mobile','desktop'):
+              reports=sorted((Path('.lighthouseci')/profile).glob('lhr-*.json'))
+              if not reports:
+                  print(f'{profile}: no report found')
+                  continue
+              rows=[]
+              for report in reports:
+                  data=json.loads(report.read_text())
+                  cats=data['categories']
+                  audits=data['audits']
+                  rows.append({
+                      'performance': round(cats['performance']['score']*100),
+                      'accessibility': round(cats['accessibility']['score']*100),
+                      'best_practices': round(cats['best-practices']['score']*100),
+                      'seo': round(cats['seo']['score']*100),
+                      'lcp_ms': round(audits['largest-contentful-paint']['numericValue']),
+                      'cls': round(audits['cumulative-layout-shift']['numericValue'],3),
+                      'tbt_ms': round(audits['total-blocking-time']['numericValue'])
+                  })
+              keys=rows[0].keys()
+              median={key: sorted(row[key] for row in rows)[len(rows)//2] for key in keys}
+              print(f"LIGHTHOUSE {profile.upper()}: {median}")
+          PY
       - name: Upload Lighthouse reports
         if: always()
         uses: actions/upload-artifact@v4
