@@ -32,6 +32,7 @@ jobs:
             index.html
             lighthouserc.json
             lighthouserc-desktop.json
+            scripts/runtime-smoke.mjs
             assets/adaptive-wizard.css
             assets/adaptive-questions.js
             assets/adaptive-wizard.js
@@ -56,6 +57,7 @@ jobs:
           grep -qi '<title>Aero Discovery | Property Transformation</title>' index.html
           grep -q 'id="productLanding"' index.html
           grep -q 'data-start-assessment' index.html
+          grep -q 'data-aero-agent' index.html
           grep -q 'id="assessmentApp"' index.html
           grep -q 'Aero Discovery Agent' index.html
           grep -q 'class="skip-link"' index.html
@@ -65,7 +67,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          find assets -maxdepth 1 -type f -name '*.js' -print0 | sort -z | xargs -0 -n1 node --check
+          find assets scripts -type f \( -name '*.js' -o -name '*.mjs' \) -print0 | sort -z | xargs -0 -n1 node --check
           python3 -m json.tool knowledge/aero-knowledge.json >/dev/null
           python3 -m json.tool lighthouserc.json >/dev/null
           python3 -m json.tool lighthouserc-desktop.json >/dev/null
@@ -108,6 +110,7 @@ jobs:
           grep -q "assets/aero-intents.js" assets/runtime-fixes.js
           grep -q "assets/aero-agent.js" assets/runtime-fixes.js
           grep -q "knowledge/aero-knowledge.json" assets/aero-intents.js
+          grep -q "diagnostics" assets/aero-cgi.js
 
       - name: Build static publish directory
         shell: bash
@@ -136,7 +139,7 @@ jobs:
           if-no-files-found: error
           retention-days: 7
 
-  lighthouse:
+  browser-audit:
     needs: validate
     runs-on: ubuntu-latest
     steps:
@@ -161,6 +164,15 @@ jobs:
           done
           cat /tmp/aero-http.log
           exit 1
+      - name: Install browser smoke-test client
+        shell: bash
+        run: npm install --no-save --no-package-lock puppeteer-core@24.16.0
+      - name: Run Aero Chrome runtime smoke test
+        shell: bash
+        env:
+          CHROME_PATH: /usr/bin/google-chrome
+          AERO_TEST_URL: http://127.0.0.1:4173/
+        run: node scripts/runtime-smoke.mjs
       - name: Run mobile Chrome Lighthouse CI
         shell: bash
         run: npx --yes @lhci/cli@0.14.0 autorun --config=./lighthouserc.json
@@ -182,19 +194,9 @@ jobs:
               rows=[]
               for report in reports:
                   data=json.loads(report.read_text())
-                  cats=data['categories']
-                  audits=data['audits']
-                  rows.append({
-                      'performance': round(cats['performance']['score']*100),
-                      'accessibility': round(cats['accessibility']['score']*100),
-                      'best_practices': round(cats['best-practices']['score']*100),
-                      'seo': round(cats['seo']['score']*100),
-                      'lcp_ms': round(audits['largest-contentful-paint']['numericValue']),
-                      'cls': round(audits['cumulative-layout-shift']['numericValue'],3),
-                      'tbt_ms': round(audits['total-blocking-time']['numericValue'])
-                  })
-              keys=rows[0].keys()
-              median={key: sorted(row[key] for row in rows)[len(rows)//2] for key in keys}
+                  cats=data['categories']; audits=data['audits']
+                  rows.append({'performance':round(cats['performance']['score']*100),'accessibility':round(cats['accessibility']['score']*100),'best_practices':round(cats['best-practices']['score']*100),'seo':round(cats['seo']['score']*100),'lcp_ms':round(audits['largest-contentful-paint']['numericValue']),'cls':round(audits['cumulative-layout-shift']['numericValue'],3),'tbt_ms':round(audits['total-blocking-time']['numericValue'])})
+              keys=rows[0].keys(); median={key:sorted(row[key] for row in rows)[len(rows)//2] for key in keys}
               print(f"LIGHTHOUSE {profile.upper()}: {median}")
           PY
       - name: Upload Lighthouse reports
@@ -208,7 +210,7 @@ jobs:
 
   deploy:
     if: github.event_name != 'pull_request'
-    needs: [validate, lighthouse]
+    needs: [validate, browser-audit]
     runs-on: ubuntu-latest
     environment:
       name: github-pages
