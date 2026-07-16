@@ -34,6 +34,8 @@ jobs:
             assets/adaptive-questions.js
             assets/adaptive-wizard.js
             assets/runtime-fixes.js
+            assets/product-landing.css
+            assets/product-landing.js
             assets/skunkie.svg
             assets/favicon.svg
             assets/skunkie-assistant.css
@@ -48,6 +50,9 @@ jobs:
           done
           grep -qi '<!DOCTYPE html>' index.html
           grep -qi '<title>Property Transformation Discovery Portal</title>' index.html
+          grep -q 'id="productLanding"' index.html
+          grep -q 'data-start-assessment' index.html
+          grep -q 'id="assessmentApp"' index.html
 
       - name: Validate JavaScript and knowledge syntax
         shell: bash
@@ -107,6 +112,8 @@ jobs:
           cp -R knowledge _site/knowledge
           test -s _site/index.html
           test -s _site/assets/adaptive-wizard.js
+          test -s _site/assets/product-landing.js
+          test -s _site/assets/product-landing.css
           test -s _site/assets/skunkie-assistant.js
           test -s _site/assets/favicon.svg
           test -s _site/knowledge/skunkie-knowledge.json
