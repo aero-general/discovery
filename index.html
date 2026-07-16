@@ -4,33 +4,130 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <meta name="color-scheme" content="light dark" />
+<meta name="theme-color" content="#173b57" />
+<meta name="description" content="Adaptive property transformation discovery assessment with explainable recommendations and reversible decisions." />
 <title>Property Transformation Discovery Portal</title>
 <link rel="stylesheet" href="assets/adaptive-wizard.css" />
+<script>
+(function(){
+  const jsonKeys=['propDiscoveryAdaptive','discoveryChatV2'];
+  jsonKeys.forEach(key=>{
+    try{const value=localStorage.getItem(key);if(value)JSON.parse(value)}
+    catch(error){console.warn('Removing invalid saved state:',key,error);localStorage.removeItem(key);if(key==='propDiscoveryAdaptive')localStorage.removeItem('propDiscoveryAdaptiveStep')}
+  });
+})();
+</script>
 </head>
 <body>
+<noscript>
+  <div style="margin:24px;padding:18px;border:1px solid #a33a32;border-radius:12px;font-family:system-ui">
+    JavaScript is required to run the Property Transformation Discovery Portal.
+  </div>
+</noscript>
 <div class="shell">
   <div class="topbar">
-    <div class="brand-wrap"><img class="brand-avatar" src="assets/skunkie.svg" alt="Skunkie, the assessment guide"/><div class="brand"><h1>Property Transformation Discovery Portal</h1><p>A guided assessment that adapts to each response, explains why questions matter and lets users revise decisions before submission.</p></div></div>
-    <div class="top-actions"><span class="pill">Adaptive Discovery</span><button class="theme-toggle" id="themeToggle" aria-label="Change colour theme">Theme: System</button></div>
-  </div>
-  <div class="layout">
-    <aside class="sidebar" id="sidebar"></aside>
-    <section class="card">
-      <div id="assessmentView">
-        <div class="progress"><div class="progress-row"><span id="progressText"></span><span id="percent"></span></div><div class="track"><div class="bar" id="bar"></div></div></div>
-        <div class="content">
-          <div class="wizard-head"><img class="wizard-avatar" src="assets/skunkie.svg" alt=""/><div><div class="kicker" id="kicker"></div><h2 id="title"></h2><div class="help" id="help"></div><div class="guide" id="guide" aria-live="polite"></div></div></div>
-          <div class="why"><button id="whyToggle" aria-expanded="false">Why we ask this</button><div class="why-panel" id="whyPanel"></div></div>
-          <div id="answer"></div><div class="feedback" id="feedback" aria-live="polite"></div>
-        </div>
-        <div class="actions"><button class="secondary" id="back">Back</button><button class="primary" id="next" disabled>Continue</button></div>
+    <div class="brand-wrap">
+      <img class="brand-avatar" src="assets/skunkie.svg" alt="Skunkie, the assessment guide" />
+      <div class="brand">
+        <h1>Property Transformation Discovery Portal</h1>
+        <p>A guided assessment that adapts to each response, explains why questions matter and lets users revise decisions before submission.</p>
       </div>
-      <div class="review" id="reviewView"><div class="kicker">Review and confirm</div><h2>Check your responses before generating the report</h2><p class="help">Every decision is reversible. Edit any section without losing your other answers.</p><div class="consistency" id="consistency"></div><div class="review-list" id="reviewList"></div><div class="actions" style="padding:24px 0 0"><button class="secondary" id="reviewBack">Back to assessment</button><button class="primary" id="confirmReview">Generate Assessment</button></div></div>
-      <div class="dashboard" id="dashboard"><div class="kicker">Executive Assessment</div><h2>Digital Transformation Readiness Report</h2><p class="help">The results below are generated from the validated responses and become live context for the WhatsApp assistant.</p><div class="scoregrid"><div class="score"><span>Technology maturity</span><strong id="techScore">0%</strong></div><div class="score"><span>Operational readiness</span><strong id="opsScore">0%</strong></div><div class="score"><span>Risk exposure</span><strong id="riskScore">0%</strong></div><div class="score"><span>Transformation opportunity</span><strong id="oppScore">0%</strong></div></div><div class="reportgrid"><div><div class="reportbox"><h3>Executive summary</h3><p id="summaryText"></p></div><div class="reportbox" style="margin-top:16px"><h3>Recommended first-phase scope</h3><div id="recommendations"></div></div><div class="reportbox" style="margin-top:16px"><h3>Priority risks</h3><div id="risks"></div></div></div><div><div class="reportbox"><h3>Capability profile</h3><div id="capabilities"></div></div><div class="wa-card"><div class="wa-head"><div><div class="wa-title">Aero Discovery Assistant</div><div class="wa-status">online · assessment-aware</div></div><div class="wa-actions"><button id="clearChat">Clear</button></div></div><div class="messages" id="messages"></div><div class="typing" id="typing">Assistant is typing…</div><div class="quick" id="quickReplies"></div><div class="chatrow"><input id="chatInput" type="text" placeholder="Type a WhatsApp message" autocomplete="off"/><button class="send" id="sendChat" aria-label="Send message">➤</button></div></div></div></div><div class="downloads"><button class="primary" id="downloadReport">Download Executive Report</button><button class="secondary" id="downloadJson">Download Assessment Data</button><button class="secondary" id="editAssessment">Edit Assessment</button><button class="secondary" id="restart">Restart Assessment</button></div><div class="note">This GitHub Pages demonstration is browser-based. Production delivery should use secure server-side storage, consent controls and audited integrations.</div></div>
-    </section>
+    </div>
+    <div class="top-actions">
+      <span class="pill">Adaptive Discovery</span>
+      <button class="theme-toggle" id="themeToggle" type="button" aria-label="Change colour theme">Theme: System</button>
+    </div>
+  </div>
+
+  <div class="layout">
+    <aside class="sidebar" id="sidebar" aria-label="Assessment progress"></aside>
+    <main class="card" id="mainContent">
+      <section id="assessmentView" aria-labelledby="title">
+        <div class="progress" aria-label="Assessment completion">
+          <div class="progress-row"><span id="progressText"></span><span id="percent"></span></div>
+          <div class="track"><div class="bar" id="bar"></div></div>
+        </div>
+        <div class="content">
+          <div class="wizard-head">
+            <img class="wizard-avatar" src="assets/skunkie.svg" alt="" />
+            <div>
+              <div class="kicker" id="kicker"></div>
+              <h2 id="title"></h2>
+              <div class="help" id="help"></div>
+              <div class="guide" id="guide" aria-live="polite"></div>
+            </div>
+          </div>
+          <div class="why">
+            <button id="whyToggle" type="button" aria-expanded="false" aria-controls="whyPanel">Why we ask this</button>
+            <div class="why-panel" id="whyPanel"></div>
+          </div>
+          <div id="answer"></div>
+          <div class="feedback" id="feedback" aria-live="polite"></div>
+        </div>
+        <div class="actions">
+          <button class="secondary" id="back" type="button">Back</button>
+          <button class="primary" id="next" type="button" disabled>Continue</button>
+        </div>
+      </section>
+
+      <section class="review" id="reviewView" aria-labelledby="reviewTitle">
+        <div class="kicker">Review and confirm</div>
+        <h2 id="reviewTitle">Check your responses before generating the report</h2>
+        <p class="help">Every decision is reversible. Edit any section without losing your other answers.</p>
+        <div class="consistency" id="consistency" aria-live="polite"></div>
+        <div class="review-list" id="reviewList"></div>
+        <div class="actions" style="padding:24px 0 0">
+          <button class="secondary" id="reviewBack" type="button">Back to assessment</button>
+          <button class="primary" id="confirmReview" type="button">Generate Assessment</button>
+        </div>
+      </section>
+
+      <section class="dashboard" id="dashboard" aria-labelledby="dashboardTitle">
+        <div class="kicker">Executive Assessment</div>
+        <h2 id="dashboardTitle">Digital Transformation Readiness Report</h2>
+        <p class="help">The results below are generated from the validated responses and become live context for the WhatsApp assistant.</p>
+        <div class="scoregrid">
+          <div class="score"><span>Technology maturity</span><strong id="techScore">0%</strong></div>
+          <div class="score"><span>Operational readiness</span><strong id="opsScore">0%</strong></div>
+          <div class="score"><span>Risk exposure</span><strong id="riskScore">0%</strong></div>
+          <div class="score"><span>Transformation opportunity</span><strong id="oppScore">0%</strong></div>
+        </div>
+        <div class="reportgrid">
+          <div>
+            <div class="reportbox"><h3>Executive summary</h3><p id="summaryText"></p></div>
+            <div class="reportbox" style="margin-top:16px"><h3>Recommended first-phase scope</h3><div id="recommendations"></div></div>
+            <div class="reportbox" style="margin-top:16px"><h3>Priority risks</h3><div id="risks"></div></div>
+          </div>
+          <div>
+            <div class="reportbox"><h3>Capability profile</h3><div id="capabilities"></div></div>
+            <div class="wa-card">
+              <div class="wa-head">
+                <div><div class="wa-title">Aero Discovery Assistant</div><div class="wa-status">online · assessment-aware</div></div>
+                <div class="wa-actions"><button id="clearChat" type="button">Clear</button></div>
+              </div>
+              <div class="messages" id="messages" aria-live="polite"></div>
+              <div class="typing" id="typing">Assistant is typing…</div>
+              <div class="quick" id="quickReplies"></div>
+              <div class="chatrow">
+                <input id="chatInput" type="text" placeholder="Type a WhatsApp message" autocomplete="off" aria-label="Chat message" />
+                <button class="send" id="sendChat" type="button" aria-label="Send message">➤</button>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="downloads">
+          <button class="primary" id="downloadReport" type="button">Download Executive Report</button>
+          <button class="secondary" id="downloadJson" type="button">Download Assessment Data</button>
+          <button class="secondary" id="editAssessment" type="button">Edit Assessment</button>
+          <button class="secondary" id="restart" type="button">Restart Assessment</button>
+        </div>
+        <div class="note">This GitHub Pages demonstration is browser-based. Production delivery should use secure server-side storage, consent controls and audited integrations.</div>
+      </section>
+    </main>
   </div>
 </div>
 <script src="assets/adaptive-questions.js"></script>
 <script src="assets/adaptive-wizard.js"></script>
+<script src="assets/runtime-fixes.js"></script>
 </body>
 </html>
