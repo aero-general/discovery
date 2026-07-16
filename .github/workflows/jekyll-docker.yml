@@ -44,9 +44,11 @@ jobs:
             assets/aero-cgi-sprite.webp
             assets/aero-cgi.css
             assets/aero-cgi.js
+            assets/aero-cgi-recovery.js
             assets/aero-agent.css
             assets/aero-agent.js
             assets/aero-intents.js
+            assets/skunkie.svg
             assets/favicon.svg
             knowledge/aero-knowledge.json
           )
@@ -107,10 +109,12 @@ jobs:
           PY
           grep -q "assets/aero-cgi.css" assets/runtime-fixes.js
           grep -q "assets/aero-cgi.js" assets/runtime-fixes.js
+          grep -q "assets/aero-cgi-recovery.js" assets/runtime-fixes.js
           grep -q "assets/aero-intents.js" assets/runtime-fixes.js
           grep -q "assets/aero-agent.js" assets/runtime-fixes.js
           grep -q "knowledge/aero-knowledge.json" assets/aero-intents.js
           grep -q "diagnostics" assets/aero-cgi.js
+          grep -q "aero-cgi-vector-fallback" assets/aero-cgi-recovery.js
 
       - name: Build static publish directory
         shell: bash
@@ -126,6 +130,7 @@ jobs:
           test -s _site/assets/product-landing.js
           test -s _site/assets/ux-enhancements.js
           test -s _site/assets/aero-cgi-sprite.webp
+          test -s _site/assets/aero-cgi-recovery.js
           test -s _site/assets/aero-agent.js
           test -s _site/knowledge/aero-knowledge.json
           find _site -type f -print | sort
