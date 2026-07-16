@@ -22,9 +22,10 @@ try {
   if (!response?.ok()) throw new Error(`Page returned HTTP ${response?.status()}`);
 
   await page.waitForFunction(() => document.documentElement.dataset.aeroBootstrap === 'ready', { timeout: 20000 });
-  await page.waitForFunction(() => window.AeroCGI?.diagnostics?.().rendered >= 3, { timeout: 20000 });
+  await page.waitForFunction(() => window.AeroCGI?.diagnostics?.().rendered >= 2, { timeout: 20000 });
 
-  const diagnostics = await page.evaluate(() => window.AeroCGI.diagnostics());
+  let diagnostics = await page.evaluate(() => window.AeroCGI.diagnostics());
+  console.log('Landing diagnostics', diagnostics);
   if (!diagnostics.image.width || !diagnostics.image.height) throw new Error(`Sprite did not decode: ${JSON.stringify(diagnostics)}`);
   if (diagnostics.error) throw new Error(diagnostics.error);
 
@@ -42,16 +43,19 @@ try {
   await page.waitForSelector('.aero-chat.open', { visible: true, timeout: 5000 });
   const chatState = await page.$eval('.aero-launcher', element => element.getAttribute('aria-expanded'));
   if (chatState !== 'true') throw new Error('Chat launcher did not expose the open state.');
+  await page.waitForFunction(() => window.AeroCGI?.diagnostics?.().rendered >= 3, { timeout: 5000 });
 
   await page.keyboard.press('Escape');
   await page.waitForFunction(() => !document.querySelector('.aero-chat')?.classList.contains('open'));
 
   await page.click('[data-start-assessment]');
   await page.waitForSelector('#assessmentApp:not([hidden])', { visible: true, timeout: 5000 });
-  await page.waitForFunction(() => document.querySelectorAll('.aero-cgi').length >= 3);
+  await page.waitForFunction(() => document.querySelector('.wizard-head .aero-cgi')?.dataset.renderStatus === 'ready', { timeout: 5000 });
 
+  diagnostics = await page.evaluate(() => window.AeroCGI.diagnostics());
+  console.log('Final diagnostics', diagnostics);
   if (errors.length) throw new Error(`Browser errors detected:\n${errors.join('\n')}`);
-  console.log('Aero runtime smoke test passed', diagnostics);
+  console.log('Aero runtime smoke test passed');
 } finally {
   await browser.close();
 }
