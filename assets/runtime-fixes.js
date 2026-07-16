@@ -1,6 +1,6 @@
 (() => {
   'use strict';
-  const VERSION='20260716.4';
+  const VERSION='20260716.5';
   const safeRemove=key=>{try{localStorage.removeItem(key)}catch(_){}};
   const pruneInactiveAnswers=()=>{if(typeof activeQuestions!=='function'||typeof responses!=='object')return;const activeKeys=new Set(activeQuestions().map(question=>question.key));['whatsappVolume','maintenanceSla','consent'].forEach(key=>{if(!activeKeys.has(key)&&Object.prototype.hasOwnProperty.call(responses,key))delete responses[key]});if(typeof save==='function')save()};
   const originalNext=document.getElementById('next')?.onclick,next=document.getElementById('next');
@@ -17,6 +17,7 @@
   const loadScript=src=>new Promise((resolve,reject)=>{if([...document.scripts].some(script=>clean(script.src).endsWith(clean(src))))return resolve();const script=document.createElement('script');script.src=versioned(src);script.async=false;script.onload=resolve;script.onerror=()=>reject(new Error(`Unable to load ${src}`));document.body.appendChild(script)});
   Promise.all([loadStyle('assets/aero-cgi.css'),loadStyle('assets/aero-agent.css')])
     .then(()=>loadScript('assets/aero-cgi.js'))
+    .then(()=>loadScript('assets/aero-cgi-recovery.js'))
     .then(()=>loadScript('assets/aero-intents.js'))
     .then(()=>window.AeroIntents?.ready)
     .then(()=>loadScript('assets/aero-agent.js'))
