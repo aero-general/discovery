@@ -6,33 +6,23 @@
 <meta name="color-scheme" content="light dark" />
 <meta name="theme-color" content="#173b57" />
 <meta name="description" content="Aero Discovery is an adaptive property transformation assessment that turns operational responses into an explainable pilot roadmap." />
-<title>Property Transformation Discovery Portal</title>
+<title>Aero Discovery | Property Transformation</title>
 <link rel="stylesheet" href="assets/adaptive-wizard.css" />
 <link rel="stylesheet" href="assets/product-landing.css" />
 <script>
 (function(){
-  const jsonKeys=['propDiscoveryAdaptive','discoveryChatV2'];
-  jsonKeys.forEach(key=>{
-    try{const value=localStorage.getItem(key);if(value)JSON.parse(value)}
-    catch(error){console.warn('Removing invalid saved state:',key,error);localStorage.removeItem(key);if(key==='propDiscoveryAdaptive')localStorage.removeItem('propDiscoveryAdaptiveStep')}
-  });
+  const jsonKeys=['propDiscoveryAdaptive','discoveryChatV2','aeroAgentChatV1'];
+  jsonKeys.forEach(key=>{try{const value=localStorage.getItem(key);if(value)JSON.parse(value)}catch(error){console.warn('Removing invalid saved state:',key,error);localStorage.removeItem(key);if(key==='propDiscoveryAdaptive')localStorage.removeItem('propDiscoveryAdaptiveStep')}});
 })();
 </script>
 </head>
 <body>
-<noscript>
-  <div style="margin:24px;padding:18px;border:1px solid #a33a32;border-radius:12px;font-family:system-ui">
-    JavaScript is required to run the Property Transformation Discovery Portal.
-  </div>
-</noscript>
+<noscript><div style="margin:24px;padding:18px;border:1px solid #a33a32;border-radius:12px;font-family:system-ui">JavaScript is required to run Aero Discovery.</div></noscript>
 <div class="shell">
   <div class="topbar">
     <div class="brand-wrap">
-      <img class="brand-avatar" src="assets/skunkie.svg" alt="Skunkie, the Aero Discovery guide" />
-      <div class="brand">
-        <h1>Aero Discovery</h1>
-        <p>Property transformation intelligence for owners, operators and decision-makers.</p>
-      </div>
+      <img class="brand-avatar" src="assets/aero-cgi-sprite.webp" alt="Aero, the Discovery Agent" />
+      <div class="brand"><h1>Aero Discovery</h1><p>Property transformation intelligence for owners, operators and decision-makers.</p></div>
     </div>
     <div class="top-actions">
       <span class="pill">Adaptive Discovery</span>
@@ -50,17 +40,13 @@
         <div class="landing-cta">
           <button class="primary" type="button" data-start-assessment>Start the assessment</button>
           <button class="secondary" id="resumeAssessment" type="button" hidden>Resume saved assessment</button>
-          <button class="secondary" type="button" onclick="window.SkunkieAssistant?.open()">Ask Skunkie</button>
+          <button class="secondary" type="button" onclick="window.AeroAgent?.open()">Ask Aero</button>
         </div>
-        <div class="landing-meta" aria-label="Assessment features">
-          <span>Approximately 8–12 minutes</span>
-          <span>Responses saved locally</span>
-          <span>Executive-ready output</span>
-        </div>
+        <div class="landing-meta" aria-label="Assessment features"><span>Approximately 8–12 minutes</span><span>Responses saved locally</span><span>Executive-ready output</span></div>
       </div>
       <div class="landing-visual" aria-label="Aero Discovery interactive guide">
         <div class="landing-orbit" aria-hidden="true"></div>
-        <img class="landing-skunkie" src="assets/skunkie.svg" alt="Skunkie, the animated Aero Discovery assistant" />
+        <img class="landing-skunkie" src="assets/aero-cgi-sprite.webp" alt="Aero, the animated Discovery Agent" />
         <div class="landing-chip one"><strong>Adaptive</strong>Questions change according to your business context.</div>
         <div class="landing-chip two"><strong>Explainable</strong>Understand why each answer affects the recommendation.</div>
         <div class="landing-chip three"><strong>Reversible</strong>Review and edit decisions before generating the report.</div>
@@ -68,24 +54,16 @@
     </section>
 
     <section class="landing-section" aria-labelledby="howTitle">
-      <div class="landing-section-head">
-        <div class="kicker">How it works</div>
-        <h3 id="howTitle">A consulting-grade discovery experience, delivered through the browser.</h3>
-        <p>The assessment captures business priorities, operating risks, technology readiness and delivery constraints before converting them into an actionable transformation profile.</p>
-      </div>
+      <div class="landing-section-head"><div class="kicker">How it works</div><h3 id="howTitle">A consulting-grade discovery experience, delivered through the browser.</h3><p>The assessment captures business priorities, operating risks, technology readiness and delivery constraints before converting them into an actionable transformation profile.</p></div>
       <div class="landing-grid">
         <article class="landing-card"><span class="number">01</span><h4>Describe the operating environment</h4><p>Capture portfolio context, business pressure points, current systems and operational controls.</p></article>
-        <article class="landing-card"><span class="number">02</span><h4>Receive contextual guidance</h4><p>Skunkie explains each question, reacts to user choices and surfaces implications while the assessment is completed.</p></article>
+        <article class="landing-card"><span class="number">02</span><h4>Receive contextual guidance</h4><p>Aero explains each question, reacts to user choices and surfaces implications while the assessment is completed.</p></article>
         <article class="landing-card"><span class="number">03</span><h4>Generate a practical roadmap</h4><p>Review the recommendation, identify priority controls and define a focused first-phase pilot.</p></article>
       </div>
     </section>
 
     <section class="landing-section" aria-labelledby="outcomesTitle">
-      <div class="landing-section-head">
-        <div class="kicker">What you receive</div>
-        <h3 id="outcomesTitle">Decision support, not just a questionnaire.</h3>
-        <p>The output is designed to support executive conversations, implementation planning and the next discovery workshop.</p>
-      </div>
+      <div class="landing-section-head"><div class="kicker">What you receive</div><h3 id="outcomesTitle">Decision support, not just a questionnaire.</h3><p>The output is designed to support executive conversations, implementation planning and the next discovery workshop.</p></div>
       <div class="landing-outcomes">
         <div class="landing-outcome"><strong>Readiness profile</strong><span>Technology maturity, operational readiness, risk exposure and transformation opportunity.</span></div>
         <div class="landing-outcome"><strong>Pilot recommendation</strong><span>A bounded first-phase scope aligned to business priorities and budget.</span></div>
@@ -94,10 +72,7 @@
       </div>
     </section>
 
-    <section class="landing-final">
-      <div><h3>Ready to define the right first move?</h3><p>Begin the adaptive assessment or speak to Skunkie before you start.</p></div>
-      <div class="landing-cta" style="margin-top:0"><button class="primary" type="button" data-start-assessment>Begin discovery</button><button class="secondary" type="button" onclick="window.SkunkieAssistant?.open()">Chat with Skunkie</button></div>
-    </section>
+    <section class="landing-final"><div><h3>Ready to define the right first move?</h3><p>Begin the adaptive assessment or speak to Aero before you start.</p></div><div class="landing-cta" style="margin-top:0"><button class="primary" type="button" data-start-assessment>Begin discovery</button><button class="secondary" type="button" onclick="window.AeroAgent?.open()">Chat with Aero</button></div></section>
   </main>
 
   <div class="assessment-app" id="assessmentApp" hidden>
@@ -105,84 +80,24 @@
       <aside class="sidebar" id="sidebar" aria-label="Assessment progress"></aside>
       <main class="card" id="mainContent" tabindex="-1">
         <section id="assessmentView" aria-labelledby="title">
-          <div class="progress" aria-label="Assessment completion">
-            <div class="progress-row"><span id="progressText"></span><span id="percent"></span></div>
-            <div class="track"><div class="bar" id="bar"></div></div>
-          </div>
+          <div class="progress" aria-label="Assessment completion"><div class="progress-row"><span id="progressText"></span><span id="percent"></span></div><div class="track"><div class="bar" id="bar"></div></div></div>
           <div class="content">
-            <div class="wizard-head">
-              <img class="wizard-avatar" src="assets/skunkie.svg" alt="" />
-              <div>
-                <div class="kicker" id="kicker"></div>
-                <h2 id="title"></h2>
-                <div class="help" id="help"></div>
-                <div class="guide" id="guide" aria-live="polite"></div>
-              </div>
-            </div>
-            <div class="why">
-              <button id="whyToggle" type="button" aria-expanded="false" aria-controls="whyPanel">Why we ask this</button>
-              <div class="why-panel" id="whyPanel"></div>
-            </div>
-            <div id="answer"></div>
-            <div class="feedback" id="feedback" aria-live="polite"></div>
+            <div class="wizard-head"><img class="wizard-avatar" src="assets/aero-cgi-sprite.webp" alt="Aero Discovery Agent" /><div><div class="kicker" id="kicker"></div><h2 id="title"></h2><div class="help" id="help"></div><div class="guide" id="guide" aria-live="polite"></div></div></div>
+            <div class="why"><button id="whyToggle" type="button" aria-expanded="false" aria-controls="whyPanel">Why we ask this</button><div class="why-panel" id="whyPanel"></div></div>
+            <div id="answer"></div><div class="feedback" id="feedback" aria-live="polite"></div>
           </div>
-          <div class="actions">
-            <button class="secondary" id="back" type="button">Back</button>
-            <button class="primary" id="next" type="button" disabled>Continue</button>
-          </div>
+          <div class="actions"><button class="secondary" id="back" type="button">Back</button><button class="primary" id="next" type="button" disabled>Continue</button></div>
         </section>
 
         <section class="review" id="reviewView" aria-labelledby="reviewTitle">
-          <div class="kicker">Review and confirm</div>
-          <h2 id="reviewTitle">Check your responses before generating the report</h2>
-          <p class="help">Every decision is reversible. Edit any section without losing your other answers.</p>
-          <div class="consistency" id="consistency" aria-live="polite"></div>
-          <div class="review-list" id="reviewList"></div>
-          <div class="actions" style="padding:24px 0 0">
-            <button class="secondary" id="reviewBack" type="button">Back to assessment</button>
-            <button class="primary" id="confirmReview" type="button">Generate Assessment</button>
-          </div>
+          <div class="kicker">Review and confirm</div><h2 id="reviewTitle">Check your responses before generating the report</h2><p class="help">Every decision is reversible. Edit any section without losing your other answers.</p><div class="consistency" id="consistency" aria-live="polite"></div><div class="review-list" id="reviewList"></div><div class="actions" style="padding:24px 0 0"><button class="secondary" id="reviewBack" type="button">Back to assessment</button><button class="primary" id="confirmReview" type="button">Generate Assessment</button></div>
         </section>
 
         <section class="dashboard" id="dashboard" aria-labelledby="dashboardTitle">
-          <div class="kicker">Executive Assessment</div>
-          <h2 id="dashboardTitle">Digital Transformation Readiness Report</h2>
-          <p class="help">The results below are generated from the validated responses and become live context for the Aero Discovery Assistant.</p>
-          <div class="scoregrid">
-            <div class="score"><span>Technology maturity</span><strong id="techScore">0%</strong></div>
-            <div class="score"><span>Operational readiness</span><strong id="opsScore">0%</strong></div>
-            <div class="score"><span>Risk exposure</span><strong id="riskScore">0%</strong></div>
-            <div class="score"><span>Transformation opportunity</span><strong id="oppScore">0%</strong></div>
-          </div>
-          <div class="reportgrid">
-            <div>
-              <div class="reportbox"><h3>Executive summary</h3><p id="summaryText"></p></div>
-              <div class="reportbox" style="margin-top:16px"><h3>Recommended first-phase scope</h3><div id="recommendations"></div></div>
-              <div class="reportbox" style="margin-top:16px"><h3>Priority risks</h3><div id="risks"></div></div>
-            </div>
-            <div>
-              <div class="reportbox"><h3>Capability profile</h3><div id="capabilities"></div></div>
-              <div class="wa-card">
-                <div class="wa-head">
-                  <div><div class="wa-title">Aero Discovery Assistant</div><div class="wa-status">online · assessment-aware</div></div>
-                  <div class="wa-actions"><button id="clearChat" type="button">Clear</button></div>
-                </div>
-                <div class="messages" id="messages" aria-live="polite"></div>
-                <div class="typing" id="typing">Assistant is typing…</div>
-                <div class="quick" id="quickReplies"></div>
-                <div class="chatrow">
-                  <input id="chatInput" type="text" placeholder="Type a message" autocomplete="off" aria-label="Chat message" />
-                  <button class="send" id="sendChat" type="button" aria-label="Send message">➤</button>
-                </div>
-              </div>
-            </div>
-          </div>
-          <div class="downloads">
-            <button class="primary" id="downloadReport" type="button">Download Executive Report</button>
-            <button class="secondary" id="downloadJson" type="button">Download Assessment Data</button>
-            <button class="secondary" id="editAssessment" type="button">Edit Assessment</button>
-            <button class="secondary" id="restart" type="button">Restart Assessment</button>
-          </div>
+          <div class="kicker">Executive Assessment</div><h2 id="dashboardTitle">Digital Transformation Readiness Report</h2><p class="help">The results below are generated from the validated responses and become live context for the Aero Discovery Agent.</p>
+          <div class="scoregrid"><div class="score"><span>Technology maturity</span><strong id="techScore">0%</strong></div><div class="score"><span>Operational readiness</span><strong id="opsScore">0%</strong></div><div class="score"><span>Risk exposure</span><strong id="riskScore">0%</strong></div><div class="score"><span>Transformation opportunity</span><strong id="oppScore">0%</strong></div></div>
+          <div class="reportgrid"><div><div class="reportbox"><h3>Executive summary</h3><p id="summaryText"></p></div><div class="reportbox" style="margin-top:16px"><h3>Recommended first-phase scope</h3><div id="recommendations"></div></div><div class="reportbox" style="margin-top:16px"><h3>Priority risks</h3><div id="risks"></div></div></div><div><div class="reportbox"><h3>Capability profile</h3><div id="capabilities"></div></div><div class="wa-card"><div class="wa-head"><div><div class="wa-title">Aero Discovery Agent</div><div class="wa-status">online · assessment-aware</div></div><div class="wa-actions"><button id="clearChat" type="button">Clear</button></div></div><div class="messages" id="messages" aria-live="polite"></div><div class="typing" id="typing">Aero is typing…</div><div class="quick" id="quickReplies"></div><div class="chatrow"><input id="chatInput" type="text" placeholder="Type a message" autocomplete="off" aria-label="Chat message" /><button class="send" id="sendChat" type="button" aria-label="Send message">➤</button></div></div></div></div>
+          <div class="downloads"><button class="primary" id="downloadReport" type="button">Download Executive Report</button><button class="secondary" id="downloadJson" type="button">Download Assessment Data</button><button class="secondary" id="editAssessment" type="button">Edit Assessment</button><button class="secondary" id="restart" type="button">Restart Assessment</button></div>
           <div class="note">This GitHub Pages demonstration is browser-based. Production delivery should use secure server-side storage, consent controls and audited integrations.</div>
         </section>
       </main>

@@ -36,42 +36,42 @@ jobs:
             assets/runtime-fixes.js
             assets/product-landing.css
             assets/product-landing.js
-            assets/skunkie.svg
+            assets/aero-cgi-sprite.webp
+            assets/aero-cgi.css
+            assets/aero-cgi.js
+            assets/aero-agent.css
+            assets/aero-agent.js
+            assets/aero-intents.js
             assets/favicon.svg
-            assets/skunkie-assistant.css
-            assets/skunkie-intents.js
-            assets/skunkie-assistant.js
-            knowledge/skunkie-knowledge.json
-            docs/skunkie-webhook-contract.md
-            examples/skunkie-webhook-handler.mjs
+            knowledge/aero-knowledge.json
           )
           for file in "${required[@]}"; do
             test -s "$file" || { echo "Missing or empty required file: $file"; exit 1; }
           done
           grep -qi '<!DOCTYPE html>' index.html
-          grep -qi '<title>Property Transformation Discovery Portal</title>' index.html
+          grep -qi '<title>Aero Discovery | Property Transformation</title>' index.html
           grep -q 'id="productLanding"' index.html
           grep -q 'data-start-assessment' index.html
           grep -q 'id="assessmentApp"' index.html
+          grep -q 'Aero Discovery Agent' index.html
 
       - name: Validate JavaScript and knowledge syntax
         shell: bash
         run: |
           set -euo pipefail
           find assets -maxdepth 1 -type f -name '*.js' -print0 | sort -z | xargs -0 -n1 node --check
-          node --check examples/skunkie-webhook-handler.mjs
-          python3 -m json.tool knowledge/skunkie-knowledge.json >/dev/null
+          python3 -m json.tool knowledge/aero-knowledge.json >/dev/null
           python3 - <<'PY'
           import json
           from pathlib import Path
-          data=json.loads(Path('knowledge/skunkie-knowledge.json').read_text())
+          data=json.loads(Path('knowledge/aero-knowledge.json').read_text())
           topics=data.get('topics',[])
-          assert len(topics) >= 8, 'Knowledge store must include at least eight topics'
+          assert len(topics) >= 10, 'Aero knowledge store must include at least ten topics'
           ids=[topic.get('id') for topic in topics]
           assert len(ids)==len(set(ids)), 'Knowledge topic IDs must be unique'
           for topic in topics:
               assert topic.get('title') and topic.get('summary') and topic.get('keywords'), f'Incomplete topic: {topic}'
-          print(f'Validated {len(topics)} Skunkie knowledge topics')
+          print(f'Validated {len(topics)} Aero knowledge topics')
           PY
 
       - name: Validate local asset references
@@ -95,11 +95,11 @@ jobs:
           if missing: raise SystemExit('Missing referenced assets: '+', '.join(missing))
           print(f'Validated {len(parser.refs)} static HTML asset references')
           PY
-          grep -q "assets/skunkie-assistant.css" assets/runtime-fixes.js
-          grep -q "assets/skunkie-intents.js" assets/runtime-fixes.js
-          grep -q "assets/skunkie-assistant.js" assets/runtime-fixes.js
-          grep -q "assets/favicon.svg" assets/runtime-fixes.js
-          grep -q "knowledge/skunkie-knowledge.json" assets/skunkie-intents.js
+          grep -q "assets/aero-cgi.css" assets/runtime-fixes.js
+          grep -q "assets/aero-cgi.js" assets/runtime-fixes.js
+          grep -q "assets/aero-intents.js" assets/runtime-fixes.js
+          grep -q "assets/aero-agent.js" assets/runtime-fixes.js
+          grep -q "knowledge/aero-knowledge.json" assets/aero-intents.js
 
       - name: Build static publish directory
         shell: bash
@@ -113,10 +113,9 @@ jobs:
           test -s _site/index.html
           test -s _site/assets/adaptive-wizard.js
           test -s _site/assets/product-landing.js
-          test -s _site/assets/product-landing.css
-          test -s _site/assets/skunkie-assistant.js
-          test -s _site/assets/favicon.svg
-          test -s _site/knowledge/skunkie-knowledge.json
+          test -s _site/assets/aero-cgi-sprite.webp
+          test -s _site/assets/aero-agent.js
+          test -s _site/knowledge/aero-knowledge.json
           find _site -type f -print | sort
 
       - name: Upload validation artifact
@@ -138,7 +137,6 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
-
       - name: Build static publish directory
         shell: bash
         run: |
@@ -148,15 +146,12 @@ jobs:
           cp index.html .nojekyll LICENSE _site/
           cp -R assets _site/assets
           cp -R knowledge _site/knowledge
-
       - name: Configure GitHub Pages
         uses: actions/configure-pages@v5
-
       - name: Upload GitHub Pages artifact
         uses: actions/upload-pages-artifact@v3
         with:
           path: _site
-
       - name: Deploy GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4
