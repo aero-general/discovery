@@ -1,12 +1,10 @@
-name: Deploy static discovery portal to GitHub Pages
+name: Validate and deploy discovery portal
 
 on:
   push:
-    branches:
-      - main
+    branches: [main]
   pull_request:
-    branches:
-      - main
+    branches: [main]
   workflow_dispatch:
 
 permissions:
@@ -15,7 +13,7 @@ permissions:
   id-token: write
 
 concurrency:
-  group: pages
+  group: pages-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
@@ -25,32 +23,105 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Validate static entry point
+      - name: Validate required application files
         shell: bash
         run: |
-          test -s index.html
+          set -euo pipefail
+          required=(
+            index.html
+            .nojekyll
+            assets/adaptive-wizard.css
+            assets/adaptive-questions.js
+            assets/adaptive-wizard.js
+            assets/runtime-fixes.js
+            assets/skunkie.svg
+          )
+          for file in "${required[@]}"; do
+            test -s "$file" || { echo "Missing or empty required file: $file"; exit 1; }
+          done
           grep -qi '<!DOCTYPE html>' index.html
           grep -qi '<title>Property Transformation Discovery Portal</title>' index.html
+
+      - name: Validate JavaScript syntax
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --check assets/adaptive-questions.js
+          node --check assets/adaptive-wizard.js
+          node --check assets/runtime-fixes.js
+
+      - name: Validate local asset references
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from html.parser import HTMLParser
+          from pathlib import Path
+
+          class AssetParser(HTMLParser):
+              def __init__(self):
+                  super().__init__()
+                  self.refs = []
+              def handle_starttag(self, tag, attrs):
+                  values = dict(attrs)
+                  key = 'href' if tag == 'link' else 'src' if tag in {'script', 'img'} else None
+                  if key and values.get(key):
+                      self.refs.append(values[key])
+
+          parser = AssetParser()
+          parser.feed(Path('index.html').read_text(encoding='utf-8'))
+          missing = []
+          for ref in parser.refs:
+              if ref.startswith(('http://', 'https://', 'data:', '#')):
+                  continue
+              path = Path(ref.split('?', 1)[0].lstrip('/'))
+              if not path.exists():
+                  missing.append(ref)
+          if missing:
+              raise SystemExit('Missing referenced assets: ' + ', '.join(missing))
+          print(f'Validated {len(parser.refs)} asset references')
+          PY
+
+      - name: Build static publish directory
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -rf _site
+          mkdir -p _site
+          cp index.html .nojekyll LICENSE _site/
+          cp -R assets _site/assets
+          test -s _site/index.html
+          test -s _site/assets/adaptive-wizard.js
+          find _site -type f -print | sort
+
+      - name: Upload validation artifact
+        if: github.event_name == 'pull_request'
+        uses: actions/upload-artifact@v4
+        with:
+          name: discovery-portal-preview
+          path: _site
+          if-no-files-found: error
+          retention-days: 7
 
   deploy:
     if: github.event_name != 'pull_request'
     needs: validate
+    runs-on: ubuntu-latest
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
-    runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Prepare publish directory
+      - name: Build static publish directory
         shell: bash
         run: |
+          set -euo pipefail
           rm -rf _site
           mkdir -p _site
-          cp index.html _site/index.html
-          cp .nojekyll _site/.nojekyll
-          cp LICENSE _site/LICENSE
+          cp index.html .nojekyll LICENSE _site/
+          cp -R assets _site/assets
 
       - name: Configure GitHub Pages
         uses: actions/configure-pages@v5
