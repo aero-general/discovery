@@ -27,9 +27,9 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          test -e .nojekyll || { echo "Missing required file: .nojekyll"; exit 1; }
           required=(
             index.html
-            .nojekyll
             assets/adaptive-wizard.css
             assets/adaptive-questions.js
             assets/adaptive-wizard.js
