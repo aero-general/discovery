@@ -1,7 +1,8 @@
 (() => {
   'use strict';
 
-  const FALLBACK = 'assets/skunkie.svg';
+  const PRIMARY_FALLBACK = 'assets/skunkie.svg';
+  const SECONDARY_FALLBACK = 'assets/favicon.svg';
   const observed = new WeakSet();
 
   function ensureFallback(instance) {
@@ -12,7 +13,7 @@
     if (!image) {
       image = document.createElement('img');
       image.className = 'aero-cgi-vector-fallback';
-      image.src = FALLBACK;
+      image.src = PRIMARY_FALLBACK;
       image.alt = '';
       image.setAttribute('aria-hidden', 'true');
       image.decoding = 'async';
@@ -20,10 +21,10 @@
     }
 
     const sync = () => {
-      const ready = instance.dataset.renderStatus === 'ready';
-      image.hidden = ready;
-      instance.classList.toggle('aero-vector-active', !ready);
-      if (!ready && image.complete && image.naturalWidth) {
+      const canvasReady = instance.dataset.renderStatus === 'ready';
+      image.hidden = canvasReady;
+      instance.classList.toggle('aero-vector-active', !canvasReady);
+      if (!canvasReady && image.complete && image.naturalWidth > 0) {
         instance.dataset.vectorFallback = 'ready';
         document.documentElement.dataset.aeroFallback = 'ready';
       }
@@ -31,11 +32,16 @@
 
     const observer = new MutationObserver(sync);
     observer.observe(instance, { attributes: true, attributeFilter: ['data-render-status', 'data-state'] });
-    image.addEventListener('load', sync, { once: true });
+    image.addEventListener('load', sync);
     image.addEventListener('error', () => {
+      if (!image.dataset.secondary) {
+        image.dataset.secondary = 'true';
+        image.src = SECONDARY_FALLBACK;
+        return;
+      }
       instance.dataset.vectorFallback = 'error';
-      console.error(`Unable to load Aero vector fallback: ${FALLBACK}`);
-    }, { once: true });
+      console.error('Unable to load Aero vector fallback assets.');
+    });
     sync();
   }
 
