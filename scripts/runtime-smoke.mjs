@@ -38,7 +38,7 @@ try {
   });
   if (!canvasHasPixels) throw new Error('Aero canvas rendered no visible pixels.');
 
-  await page.click('[data-open-aero-chat]');
+  await page.click('[data-open-aero]');
   await page.waitForSelector('.aero-chat.open', { visible: true, timeout: 5000 });
   const chatState = await page.$eval('.aero-launcher', element => element.getAttribute('aria-expanded'));
   if (chatState !== 'true') throw new Error('Chat launcher did not expose the open state.');
