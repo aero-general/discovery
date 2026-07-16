@@ -30,12 +30,16 @@ jobs:
           test -e .nojekyll || { echo "Missing required file: .nojekyll"; exit 1; }
           required=(
             index.html
+            lighthouserc.json
+            lighthouserc-desktop.json
             assets/adaptive-wizard.css
             assets/adaptive-questions.js
             assets/adaptive-wizard.js
             assets/runtime-fixes.js
             assets/product-landing.css
             assets/product-landing.js
+            assets/ux-enhancements.css
+            assets/ux-enhancements.js
             assets/aero-cgi-sprite.webp
             assets/aero-cgi.css
             assets/aero-cgi.js
@@ -54,6 +58,8 @@ jobs:
           grep -q 'data-start-assessment' index.html
           grep -q 'id="assessmentApp"' index.html
           grep -q 'Aero Discovery Agent' index.html
+          grep -q 'class="skip-link"' index.html
+          grep -q 'role="progressbar"' index.html
 
       - name: Validate JavaScript and knowledge syntax
         shell: bash
@@ -61,6 +67,8 @@ jobs:
           set -euo pipefail
           find assets -maxdepth 1 -type f -name '*.js' -print0 | sort -z | xargs -0 -n1 node --check
           python3 -m json.tool knowledge/aero-knowledge.json >/dev/null
+          python3 -m json.tool lighthouserc.json >/dev/null
+          python3 -m json.tool lighthouserc-desktop.json >/dev/null
           python3 - <<'PY'
           import json
           from pathlib import Path
@@ -113,6 +121,7 @@ jobs:
           test -s _site/index.html
           test -s _site/assets/adaptive-wizard.js
           test -s _site/assets/product-landing.js
+          test -s _site/assets/ux-enhancements.js
           test -s _site/assets/aero-cgi-sprite.webp
           test -s _site/assets/aero-agent.js
           test -s _site/knowledge/aero-knowledge.json
@@ -127,9 +136,79 @@ jobs:
           if-no-files-found: error
           retention-days: 7
 
+  lighthouse:
+    needs: validate
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      - name: Build static audit directory
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p _site
+          cp index.html .nojekyll LICENSE _site/
+          cp -R assets _site/assets
+          cp -R knowledge _site/knowledge
+      - name: Start local static server
+        shell: bash
+        run: |
+          python3 -m http.server 4173 --directory _site >/tmp/aero-http.log 2>&1 &
+          echo $! > /tmp/aero-http.pid
+          for attempt in {1..20}; do
+            curl --fail --silent http://127.0.0.1:4173/ >/dev/null && exit 0
+            sleep 1
+          done
+          cat /tmp/aero-http.log
+          exit 1
+      - name: Run mobile Chrome Lighthouse CI
+        shell: bash
+        run: npx --yes @lhci/cli@0.14.0 autorun --config=./lighthouserc.json
+      - name: Run desktop Chrome Lighthouse CI
+        shell: bash
+        run: npx --yes @lhci/cli@0.14.0 autorun --config=./lighthouserc-desktop.json
+      - name: Print Lighthouse score summary
+        if: always()
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          for profile in ('mobile','desktop'):
+              reports=sorted((Path('.lighthouseci')/profile).glob('lhr-*.json'))
+              if not reports:
+                  print(f'{profile}: no report found')
+                  continue
+              rows=[]
+              for report in reports:
+                  data=json.loads(report.read_text())
+                  cats=data['categories']
+                  audits=data['audits']
+                  rows.append({
+                      'performance': round(cats['performance']['score']*100),
+                      'accessibility': round(cats['accessibility']['score']*100),
+                      'best_practices': round(cats['best-practices']['score']*100),
+                      'seo': round(cats['seo']['score']*100),
+                      'lcp_ms': round(audits['largest-contentful-paint']['numericValue']),
+                      'cls': round(audits['cumulative-layout-shift']['numericValue'],3),
+                      'tbt_ms': round(audits['total-blocking-time']['numericValue'])
+                  })
+              keys=rows[0].keys()
+              median={key: sorted(row[key] for row in rows)[len(rows)//2] for key in keys}
+              print(f"LIGHTHOUSE {profile.upper()}: {median}")
+          PY
+      - name: Upload Lighthouse reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: lighthouse-reports
+          path: .lighthouseci
+          if-no-files-found: warn
+          retention-days: 14
+
   deploy:
     if: github.event_name != 'pull_request'
-    needs: validate
+    needs: [validate, lighthouse]
     runs-on: ubuntu-latest
     environment:
       name: github-pages
