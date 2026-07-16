@@ -35,6 +35,12 @@ jobs:
             assets/adaptive-wizard.js
             assets/runtime-fixes.js
             assets/skunkie.svg
+            assets/favicon.svg
+            assets/skunkie-assistant.css
+            assets/skunkie-intents.js
+            assets/skunkie-assistant.js
+            docs/skunkie-webhook-contract.md
+            examples/skunkie-webhook-handler.mjs
           )
           for file in "${required[@]}"; do
             test -s "$file" || { echo "Missing or empty required file: $file"; exit 1; }
@@ -46,9 +52,8 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          node --check assets/adaptive-questions.js
-          node --check assets/adaptive-wizard.js
-          node --check assets/runtime-fixes.js
+          find assets -maxdepth 1 -type f -name '*.js' -print0 | sort -z | xargs -0 -n1 node --check
+          node --check examples/skunkie-webhook-handler.mjs
 
       - name: Validate local asset references
         shell: bash
@@ -79,8 +84,12 @@ jobs:
                   missing.append(ref)
           if missing:
               raise SystemExit('Missing referenced assets: ' + ', '.join(missing))
-          print(f'Validated {len(parser.refs)} asset references')
+          print(f'Validated {len(parser.refs)} static HTML asset references')
           PY
+          grep -q "assets/skunkie-assistant.css" assets/runtime-fixes.js
+          grep -q "assets/skunkie-intents.js" assets/runtime-fixes.js
+          grep -q "assets/skunkie-assistant.js" assets/runtime-fixes.js
+          grep -q "assets/favicon.svg" assets/runtime-fixes.js
 
       - name: Build static publish directory
         shell: bash
@@ -92,6 +101,8 @@ jobs:
           cp -R assets _site/assets
           test -s _site/index.html
           test -s _site/assets/adaptive-wizard.js
+          test -s _site/assets/skunkie-assistant.js
+          test -s _site/assets/favicon.svg
           find _site -type f -print | sort
 
       - name: Upload validation artifact

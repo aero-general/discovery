@@ -10,9 +10,7 @@
     if (typeof activeQuestions !== 'function' || typeof responses !== 'object') return;
     const activeKeys = new Set(activeQuestions().map(question => question.key));
     ['whatsappVolume', 'maintenanceSla', 'consent'].forEach(key => {
-      if (!activeKeys.has(key) && Object.prototype.hasOwnProperty.call(responses, key)) {
-        delete responses[key];
-      }
+      if (!activeKeys.has(key) && Object.prototype.hasOwnProperty.call(responses, key)) delete responses[key];
     });
     if (typeof save === 'function') save();
   };
@@ -33,11 +31,8 @@
     };
   }
 
-  document.getElementById('answer')?.addEventListener('change', () => {
-    window.setTimeout(pruneInactiveAnswers, 0);
-  });
+  document.getElementById('answer')?.addEventListener('change', () => window.setTimeout(pruneInactiveAnswers, 0));
 
-  // Improve recovery from corrupted browser state without breaking a valid assessment.
   window.addEventListener('error', event => {
     const message = String(event?.message || 'Unexpected application error');
     console.error('Discovery portal runtime error:', event.error || message);
@@ -51,11 +46,8 @@
     document.body.appendChild(banner);
   });
 
-  window.addEventListener('unhandledrejection', event => {
-    console.error('Discovery portal rejected promise:', event.reason);
-  });
+  window.addEventListener('unhandledrejection', event => console.error('Discovery portal rejected promise:', event.reason));
 
-  // Storage can be unavailable in strict private modes. Confirm access and degrade gracefully.
   try {
     const probe = '__discovery_storage_probe__';
     localStorage.setItem(probe, '1');
@@ -64,7 +56,6 @@
     console.warn('Local storage is unavailable; save-and-resume is disabled.', error);
   }
 
-  // Prevent old incompatible versions of the data model from causing repeated failures.
   try {
     const raw = localStorage.getItem('propDiscoveryAdaptive');
     if (raw) JSON.parse(raw);
@@ -76,4 +67,34 @@
     safeRemove('propDiscoveryAdaptiveStep');
     safeRemove('discoveryChatV2');
   }
+
+  const loadStyle = href => {
+    if (document.querySelector(`link[href="${href}"]`)) return;
+    const link = document.createElement('link');
+    link.rel = 'stylesheet';
+    link.href = href;
+    document.head.appendChild(link);
+  };
+  const loadScript = src => new Promise((resolve, reject) => {
+    if (document.querySelector(`script[src="${src}"]`)) return resolve();
+    const script = document.createElement('script');
+    script.src = src;
+    script.defer = true;
+    script.onload = resolve;
+    script.onerror = () => reject(new Error(`Unable to load ${src}`));
+    document.body.appendChild(script);
+  });
+
+  // The assistant is loaded as an enhancement so the assessment remains usable if it fails.
+  loadStyle('assets/skunkie-assistant.css');
+  if (!document.querySelector('link[rel~="icon"]')) {
+    const icon = document.createElement('link');
+    icon.rel = 'icon';
+    icon.type = 'image/svg+xml';
+    icon.href = 'assets/favicon.svg';
+    document.head.appendChild(icon);
+  }
+  loadScript('assets/skunkie-intents.js')
+    .then(() => loadScript('assets/skunkie-assistant.js'))
+    .catch(error => console.error('Skunkie interactive assistant enhancement failed to load:', error));
 })();
