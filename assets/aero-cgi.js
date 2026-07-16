@@ -5,7 +5,7 @@
   const SEQUENCES={idle:['idle','curious','idle'],wave:['idle','wave','present','wave'],thinking:['thinking','curious','thinking'],working:['working','data','working'],happy:['happy','success','happy'],alert:['alert','concerned','alert'],sleeping:['sleeping']};
   const image=new Image(); image.decoding='async'; image.src=SPRITE;
   const instances=new Set();
-  const dims={cols:5,rows:4,sourceW:1232,sourceH:1277,cropH:282};
+  const dims={cols:5,rows:4,sourceW:695,sourceH:720,cropH:160};
   let activeState='idle',pointer={x:innerWidth/2,y:innerHeight/2},raf=0;
   const draw=(instance,state)=>{const index=FRAMES[state]??0,col=index%5,row=Math.floor(index/5),sw=dims.sourceW/dims.cols,sh=dims.sourceH/dims.rows,canvas=instance.querySelector('canvas'),ctx=canvas.getContext('2d');canvas.width=246;canvas.height=282;ctx.clearRect(0,0,canvas.width,canvas.height);ctx.drawImage(image,col*sw,row*sh,sw,dims.cropH,0,0,canvas.width,canvas.height)};
   const animate=instance=>{clearInterval(instance._aeroTimer);const seq=SEQUENCES[instance.dataset.state]||[instance.dataset.state||'idle'];let i=0;draw(instance,seq[0]);if(seq.length>1)instance._aeroTimer=setInterval(()=>draw(instance,seq[++i%seq.length]),360)};
