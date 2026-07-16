@@ -53,7 +53,8 @@
     document.querySelectorAll('img.brand-avatar,img.wizard-avatar,img.landing-skunkie,img[data-aero-agent],.aero-placeholder[data-aero-agent]').forEach(node=>{
       if(node.dataset.aeroUpgraded)return;
       node.dataset.aeroUpgraded='1';
-      make(node,node.dataset.aeroSize||node.classList.contains('landing-skunkie')?'hero':node.classList.contains('wizard-avatar')?'wizard':'brand');
+      const inferred=node.classList.contains('landing-skunkie')?'hero':node.classList.contains('wizard-avatar')?'wizard':'brand';
+      make(node,node.dataset.aeroSize||inferred);
     });
   }
 
