@@ -1,363 +1,148 @@
 (() => {
   'use strict';
 
+  const THREE_URL = 'https://cdn.jsdelivr.net/npm/three@0.166.1/build/three.module.js';
+  const STATES = new Set(['idle','wave','present','thumbs','welcome','thinking','curious','excited','happy','surprised','explaining','data','confident','alert','concerned','success','thanks','laughing','working','sleeping']);
   const instances = new Set();
-  const STATES = new Set([
-    'idle','wave','present','thumbs','welcome','thinking','curious','excited','happy',
-    'surprised','explaining','data','confident','alert','concerned','success','thanks',
-    'laughing','working','sleeping'
-  ]);
-
+  let THREE = null;
   let activeState = 'idle';
   let pointer = { x: innerWidth / 2, y: innerHeight / 2 };
-  let raf = 0;
   let animationFrame = 0;
   let lastTime = performance.now();
 
-  const prefersReducedMotion = () => matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const reducedMotion = () => matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const clamp = (v, min, max) => Math.max(min, Math.min(max, v));
 
-  function roundRect(ctx, x, y, w, h, r) {
-    const radius = Math.min(r, w / 2, h / 2);
-    ctx.beginPath();
-    ctx.moveTo(x + radius, y);
-    ctx.arcTo(x + w, y, x + w, y + h, radius);
-    ctx.arcTo(x + w, y + h, x, y + h, radius);
-    ctx.arcTo(x, y + h, x, y, radius);
-    ctx.arcTo(x, y, x + w, y, radius);
-    ctx.closePath();
-  }
-
-  function stateProfile(state, t) {
-    const blinkCycle = (t % 4.6);
-    const blink = blinkCycle > 4.42 ? Math.max(0.08, 1 - (blinkCycle - 4.42) * 8) : 1;
-    const profile = {
-      eyeScale: blink,
-      mouth: 'smile',
-      brow: 0,
-      bob: Math.sin(t * 2.1) * 2.4,
-      tilt: Math.sin(t * 1.15) * 0.02,
-      leftArm: -0.22,
-      rightArm: 0.22,
-      pulse: 0,
-      antenna: Math.sin(t * 3.4) * 2,
-      accent: '#42d3ff'
+  function fallbackCanvas(wrap) {
+    const canvas = document.createElement('canvas');
+    canvas.setAttribute('aria-hidden', 'true');
+    wrap.appendChild(canvas);
+    const draw = () => {
+      const ratio = Math.min(devicePixelRatio || 1, 2);
+      const w = Math.max(48, wrap.clientWidth || 246), h = Math.max(54, wrap.clientHeight || 282);
+      canvas.width = Math.round(w * ratio); canvas.height = Math.round(h * ratio);
+      canvas.style.width = `${w}px`; canvas.style.height = `${h}px`;
+      const c = canvas.getContext('2d'); c.setTransform(ratio,0,0,ratio,0,0); c.clearRect(0,0,w,h);
+      const g = c.createRadialGradient(w*.5,h*.4,4,w*.5,h*.45,w*.42); g.addColorStop(0,'#69dcff'); g.addColorStop(1,'rgba(30,100,150,.12)');
+      c.fillStyle=g;c.beginPath();c.arc(w*.5,h*.48,Math.min(w,h)*.38,0,Math.PI*2);c.fill();
+      c.fillStyle='#eaf8ff';c.beginPath();c.roundRect(w*.2,h*.18,w*.6,h*.36,Math.min(w,h)*.12);c.fill();
+      c.fillStyle='#17384f';c.beginPath();c.roundRect(w*.26,h*.25,w*.48,h*.2,Math.min(w,h)*.08);c.fill();
+      c.strokeStyle='#91e4ff';c.lineWidth=Math.max(3,w*.025);c.lineCap='round';
+      c.beginPath();c.moveTo(w*.38,h*.34);c.lineTo(w*.44,h*.34);c.moveTo(w*.56,h*.34);c.lineTo(w*.62,h*.34);c.stroke();
+      c.fillStyle='#24506b';c.beginPath();c.roundRect(w*.28,h*.54,w*.44,h*.3,Math.min(w,h)*.1);c.fill();
     };
-
-    if (['happy','success','excited','thanks','laughing','thumbs'].includes(state)) {
-      profile.mouth = 'open-smile';
-      profile.bob = Math.abs(Math.sin(t * 4.2)) * -7;
-      profile.pulse = (Math.sin(t * 5) + 1) / 2;
-      profile.accent = '#58e39b';
-    }
-    if (['thinking','curious'].includes(state)) {
-      profile.mouth = 'small';
-      profile.brow = -0.12;
-      profile.tilt = -0.06 + Math.sin(t * 1.6) * 0.015;
-      profile.rightArm = -0.8;
-      profile.accent = '#b48cff';
-    }
-    if (['alert','concerned','surprised'].includes(state)) {
-      profile.mouth = state === 'surprised' ? 'o' : 'flat';
-      profile.brow = 0.2;
-      profile.eyeScale = 1.15;
-      profile.bob = Math.sin(t * 18) * 1.5;
-      profile.accent = '#ff9b62';
-    }
-    if (['working','data','explaining','present'].includes(state)) {
-      profile.mouth = 'talk';
-      profile.rightArm = -0.55 + Math.sin(t * 3.8) * 0.1;
-      profile.accent = '#42d3ff';
-    }
-    if (['wave','welcome'].includes(state)) {
-      profile.mouth = 'open-smile';
-      profile.rightArm = -1.3 + Math.sin(t * 7.2) * 0.35;
-      profile.accent = '#58e39b';
-    }
-    if (state === 'sleeping') {
-      profile.eyeScale = 0.08;
-      profile.mouth = 'small';
-      profile.bob = Math.sin(t * 1.5) * 3;
-      profile.tilt = 0.05;
-      profile.accent = '#7d91a8';
-    }
-    return profile;
+    wrap._fallbackDraw = draw; draw();
   }
 
-  function drawArm(ctx, shoulderX, shoulderY, angle, side, accent) {
-    ctx.save();
-    ctx.translate(shoulderX, shoulderY);
-    ctx.rotate(angle * side);
-    ctx.strokeStyle = '#274963';
-    ctx.lineWidth = 17;
-    ctx.lineCap = 'round';
-    ctx.beginPath();
-    ctx.moveTo(0, 0);
-    ctx.lineTo(0, 47);
-    ctx.stroke();
-    ctx.fillStyle = accent;
-    ctx.beginPath();
-    ctx.arc(0, 52, 10, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.restore();
+  function mat(color, metalness=.35, roughness=.28, emissive=0x000000, emissiveIntensity=0) {
+    return new THREE.MeshStandardMaterial({ color, metalness, roughness, emissive, emissiveIntensity });
   }
 
-  function drawAvatar(instance, time) {
-    if (!instance.isConnected || instance.dataset.visible === 'false' || document.hidden) return;
-    const canvas = instance.querySelector('canvas');
-    const ctx = canvas?.getContext('2d', { alpha: true });
-    if (!canvas || !ctx) return;
+  function buildRobot(scene) {
+    const root = new THREE.Group(); scene.add(root);
+    const accent = mat(0x42d3ff,.25,.22,0x0b8fbd,.28);
+    const shell = mat(0xeaf8ff,.18,.22);
+    const dark = mat(0x17384f,.55,.24);
+    const bodyMat = mat(0x28516b,.52,.3);
+    const joint = mat(0x6c93aa,.65,.24);
 
-    const cssWidth = Math.max(48, instance.clientWidth || Number(instance.dataset.renderWidth || 246));
-    const cssHeight = Math.max(54, instance.clientHeight || Number(instance.dataset.renderHeight || 282));
-    const ratio = Math.min(window.devicePixelRatio || 1, 2);
-    const targetW = Math.round(cssWidth * ratio);
-    const targetH = Math.round(cssHeight * ratio);
-    if (canvas.width !== targetW || canvas.height !== targetH) {
-      canvas.width = targetW;
-      canvas.height = targetH;
+    const body = new THREE.Mesh(new THREE.CapsuleGeometry(.72,.72,8,20), bodyMat); body.position.y=-.35; body.scale.z=.72; root.add(body);
+    const chest = new THREE.Mesh(new THREE.BoxGeometry(.78,.38,.12), dark); chest.position.set(0,-.28,.64); chest.geometry.translate(0,0,0); root.add(chest);
+    const core = new THREE.Mesh(new THREE.TorusGeometry(.16,.045,12,32), accent); core.position.set(0,-.28,.73); root.add(core);
+
+    const head = new THREE.Group(); head.position.y=.85; root.add(head);
+    const skull = new THREE.Mesh(new THREE.SphereGeometry(.72,32,24), shell); skull.scale.set(1.18,.88,.88); head.add(skull);
+    const face = new THREE.Mesh(new THREE.BoxGeometry(1.02,.48,.13), dark); face.position.z=.61; face.geometry.translate(0,0,0); head.add(face);
+
+    const eyes=[];
+    [-.25,.25].forEach(x=>{const e=new THREE.Mesh(new THREE.SphereGeometry(.075,16,12),accent);e.position.set(x,.06,.7);head.add(e);eyes.push(e)});
+    const mouth = new THREE.Mesh(new THREE.TorusGeometry(.14,.025,8,24,Math.PI),accent); mouth.rotation.z=Math.PI; mouth.position.set(0,-.16,.7); head.add(mouth);
+    const antenna = new THREE.Group(); antenna.position.y=.66; head.add(antenna);
+    const stem = new THREE.Mesh(new THREE.CylinderGeometry(.025,.025,.28,10),joint);stem.position.y=.12;antenna.add(stem);
+    const tip = new THREE.Mesh(new THREE.SphereGeometry(.07,14,10),accent);tip.position.y=.29;antenna.add(tip);
+
+    function arm(side){
+      const pivot=new THREE.Group();pivot.position.set(side*.74,.05,0);root.add(pivot);
+      const upper=new THREE.Mesh(new THREE.CapsuleGeometry(.12,.44,6,12),bodyMat);upper.position.y=-.25;upper.rotation.z=side*.12;pivot.add(upper);
+      const fore=new THREE.Group();fore.position.set(side*.06,-.52,0);pivot.add(fore);
+      const limb=new THREE.Mesh(new THREE.CapsuleGeometry(.1,.35,6,12),joint);limb.position.y=-.22;fore.add(limb);
+      const hand=new THREE.Mesh(new THREE.SphereGeometry(.14,16,12),accent);hand.position.y=-.46;fore.add(hand);
+      return {pivot,fore,hand};
     }
+    const left=arm(-1), right=arm(1);
 
-    ctx.setTransform(ratio, 0, 0, ratio, 0, 0);
-    ctx.clearRect(0, 0, cssWidth, cssHeight);
-
-    const state = instance.dataset.state || activeState;
-    const p = stateProfile(state, time / 1000);
-    const scale = Math.min(cssWidth / 246, cssHeight / 282);
-    const ox = cssWidth / 2;
-    const oy = cssHeight * 0.52 + p.bob * scale;
-
-    ctx.save();
-    ctx.translate(ox, oy);
-    ctx.rotate(p.tilt);
-    ctx.scale(scale, scale);
-
-    const glow = ctx.createRadialGradient(0, -20, 10, 0, -10, 122);
-    glow.addColorStop(0, `${p.accent}3f`);
-    glow.addColorStop(1, 'rgba(66,211,255,0)');
-    ctx.fillStyle = glow;
-    ctx.beginPath();
-    ctx.arc(0, -12, 122, 0, Math.PI * 2);
-    ctx.fill();
-
-    ctx.fillStyle = 'rgba(0,0,0,.22)';
-    ctx.beginPath();
-    ctx.ellipse(0, 104, 62, 13, 0, 0, Math.PI * 2);
-    ctx.fill();
-
-    drawArm(ctx, -69, 25, p.leftArm, -1, p.accent);
-    drawArm(ctx, 69, 25, p.rightArm, 1, p.accent);
-
-    const bodyGradient = ctx.createLinearGradient(-70, -10, 70, 105);
-    bodyGradient.addColorStop(0, '#315c77');
-    bodyGradient.addColorStop(1, '#17384f');
-    ctx.fillStyle = bodyGradient;
-    roundRect(ctx, -67, -10, 134, 120, 42);
-    ctx.fill();
-
-    ctx.strokeStyle = p.accent;
-    ctx.lineWidth = 3;
-    ctx.globalAlpha = 0.85;
-    roundRect(ctx, -45, 28, 90, 50, 18);
-    ctx.stroke();
-    ctx.globalAlpha = 1;
-
-    ctx.fillStyle = p.accent;
-    ctx.beginPath();
-    ctx.arc(-18, 53, 5 + p.pulse * 2, 0, Math.PI * 2);
-    ctx.arc(0, 53, 5 + p.pulse * 2, 0, Math.PI * 2);
-    ctx.arc(18, 53, 5 + p.pulse * 2, 0, Math.PI * 2);
-    ctx.fill();
-
-    ctx.fillStyle = '#eaf8ff';
-    roundRect(ctx, -77, -98, 154, 102, 42);
-    ctx.fill();
-    ctx.strokeStyle = '#254d67';
-    ctx.lineWidth = 6;
-    ctx.stroke();
-
-    ctx.fillStyle = '#17384f';
-    roundRect(ctx, -62, -84, 124, 70, 29);
-    ctx.fill();
-
-    ctx.strokeStyle = p.accent;
-    ctx.lineWidth = 4;
-    ctx.beginPath();
-    ctx.moveTo(0, -98);
-    ctx.lineTo(0, -116);
-    ctx.stroke();
-    ctx.fillStyle = p.accent;
-    ctx.beginPath();
-    ctx.arc(0, -121 + p.antenna, 7, 0, Math.PI * 2);
-    ctx.fill();
-
-    ctx.save();
-    ctx.translate(-25, -54);
-    ctx.rotate(-p.brow);
-    ctx.strokeStyle = '#94dbff';
-    ctx.lineWidth = 8 * Math.max(0.08, p.eyeScale);
-    ctx.lineCap = 'round';
-    ctx.beginPath();
-    ctx.moveTo(-9, 0);
-    ctx.lineTo(9, 0);
-    ctx.stroke();
-    ctx.restore();
-
-    ctx.save();
-    ctx.translate(25, -54);
-    ctx.rotate(p.brow);
-    ctx.strokeStyle = '#94dbff';
-    ctx.lineWidth = 8 * Math.max(0.08, p.eyeScale);
-    ctx.lineCap = 'round';
-    ctx.beginPath();
-    ctx.moveTo(-9, 0);
-    ctx.lineTo(9, 0);
-    ctx.stroke();
-    ctx.restore();
-
-    ctx.strokeStyle = p.accent;
-    ctx.fillStyle = p.accent;
-    ctx.lineWidth = 5;
-    ctx.lineCap = 'round';
-    if (p.mouth === 'open-smile') {
-      ctx.beginPath();
-      ctx.arc(0, -34, 14, 0, Math.PI);
-      ctx.stroke();
-    } else if (p.mouth === 'o') {
-      ctx.beginPath();
-      ctx.arc(0, -31, 7, 0, Math.PI * 2);
-      ctx.stroke();
-    } else if (p.mouth === 'flat') {
-      ctx.beginPath();
-      ctx.moveTo(-11, -29);
-      ctx.lineTo(11, -29);
-      ctx.stroke();
-    } else if (p.mouth === 'talk') {
-      const talk = 5 + Math.abs(Math.sin(time / 110)) * 5;
-      ctx.beginPath();
-      ctx.ellipse(0, -31, 10, talk, 0, 0, Math.PI * 2);
-      ctx.stroke();
-    } else if (p.mouth === 'small') {
-      ctx.beginPath();
-      ctx.arc(0, -29, 7, 0.1, Math.PI - 0.1);
-      ctx.stroke();
-    } else {
-      ctx.beginPath();
-      ctx.arc(0, -36, 15, 0.15, Math.PI - 0.15);
-      ctx.stroke();
-    }
-
-    if (state === 'sleeping') {
-      ctx.fillStyle = '#b8d3e4';
-      ctx.font = '700 18px system-ui';
-      ctx.fillText('Z', 71, -83);
-      ctx.font = '700 13px system-ui';
-      ctx.fillText('z', 89, -101);
-    }
-
-    ctx.restore();
+    const base = new THREE.Mesh(new THREE.CylinderGeometry(.68,.78,.16,32),dark);base.position.y=-1.18;root.add(base);
+    const ring = new THREE.Mesh(new THREE.TorusGeometry(.72,.035,10,40),accent);ring.rotation.x=Math.PI/2;ring.position.y=-1.08;root.add(ring);
+    return {root,head,body,core,eyes,mouth,antenna,left,right,accent,tip,ring};
   }
 
-  function make(source, size = 'brand') {
-    if (source?.classList?.contains('aero-cgi')) return source;
-    const wrap = document.createElement('span');
-    wrap.className = 'aero-cgi';
-    wrap.dataset.size = source?.dataset.aeroSize || size;
-    wrap.dataset.state = source?.dataset.aeroState || activeState;
-    wrap.dataset.visible = 'true';
-    wrap.tabIndex = source?.tabIndex >= 0 ? source.tabIndex : 0;
-    wrap.setAttribute('role', 'button');
-    wrap.setAttribute('aria-label', source?.getAttribute?.('aria-label') || source?.alt || 'Open Aero Discovery Agent');
-    wrap.innerHTML = '<canvas aria-hidden="true" width="246" height="282"></canvas>';
-    source?.replaceWith(wrap);
-    instances.add(wrap);
-    visibilityObserver.observe(wrap);
-    wrap.addEventListener('click', () => window.AeroAgent?.open?.());
-    wrap.addEventListener('keydown', event => {
-      if (event.key === 'Enter' || event.key === ' ') {
-        event.preventDefault();
-        window.AeroAgent?.open?.();
-      }
-    });
-    drawAvatar(wrap, performance.now());
-    return wrap;
+  function makeScene(wrap) {
+    const canvas=document.createElement('canvas');canvas.setAttribute('aria-hidden','true');wrap.appendChild(canvas);
+    const renderer=new THREE.WebGLRenderer({canvas,alpha:true,antialias:true,powerPreference:'high-performance'});
+    renderer.setPixelRatio(Math.min(devicePixelRatio||1,1.75));renderer.outputColorSpace=THREE.SRGBColorSpace;renderer.setClearColor(0x000000,0);
+    const scene=new THREE.Scene();
+    const camera=new THREE.PerspectiveCamera(28,1,.1,50);camera.position.set(0,.05,6.2);
+    scene.add(new THREE.HemisphereLight(0xcceeff,0x17384f,2.3));
+    const key=new THREE.DirectionalLight(0xffffff,3);key.position.set(3,4,5);scene.add(key);
+    const rim=new THREE.DirectionalLight(0x42d3ff,2);rim.position.set(-4,1,-2);scene.add(rim);
+    const robot=buildRobot(scene);
+    wrap._aero={renderer,scene,camera,robot,canvas,visible:true};
+    resizeInstance(wrap);
   }
 
-  function upgrade() {
-    document.querySelectorAll('img.brand-avatar,img.wizard-avatar,img.landing-skunkie,img[data-aero-agent],.aero-placeholder[data-aero-agent]').forEach(node => {
-      if (node.dataset.aeroUpgraded) return;
-      node.dataset.aeroUpgraded = '1';
-      const inferred = node.classList.contains('landing-skunkie') ? 'hero' : node.classList.contains('wizard-avatar') ? 'wizard' : 'brand';
-      make(node, node.dataset.aeroSize || inferred);
-    });
+  function resizeInstance(wrap){
+    const a=wrap._aero;if(!a)return;
+    const w=Math.max(48,wrap.clientWidth||246),h=Math.max(54,wrap.clientHeight||282);
+    a.renderer.setSize(w,h,false);a.camera.aspect=w/h;a.camera.updateProjectionMatrix();
   }
 
-  function setState(state = 'idle') {
-    activeState = STATES.has(state) ? state : 'idle';
-    instances.forEach(instance => {
-      instance.dataset.state = activeState;
-      drawAvatar(instance, performance.now());
-    });
+  function profile(state,t){
+    const p={accent:0x42d3ff,bob:Math.sin(t*1.9)*.045,tilt:Math.sin(t*.8)*.03,headY:0,eye:1,mouth:1,left:.18,right:-.18,fore:0,spin:0};
+    if(['happy','success','excited','thanks','laughing','thumbs'].includes(state)){p.accent=0x58e39b;p.bob=Math.abs(Math.sin(t*3.8))*.12;p.mouth=1.25;}
+    if(['thinking','curious'].includes(state)){p.accent=0xb48cff;p.tilt=-.12;p.right=-.75;p.fore=-.55;p.mouth=.55;}
+    if(['alert','concerned','surprised'].includes(state)){p.accent=0xff9b62;p.eye=1.3;p.bob=Math.sin(t*15)*.025;p.mouth=state==='surprised'?.35:.7;}
+    if(['working','data','explaining','present'].includes(state)){p.right=-.62+Math.sin(t*3)*.12;p.fore=-.25;p.mouth=.75+Math.abs(Math.sin(t*7))*.5;}
+    if(['wave','welcome'].includes(state)){p.right=-1.35+Math.sin(t*7)*.3;p.fore=-.8;p.mouth=1.3;}
+    if(state==='sleeping'){p.eye=.08;p.tilt=.12;p.bob=Math.sin(t*1.2)*.025;p.accent=0x7d91a8;p.mouth=.4;}
+    return p;
   }
 
-  function loop(now) {
-    const delta = now - lastTime;
-    lastTime = now;
-    if (!prefersReducedMotion() && delta >= 0) {
-      instances.forEach(instance => drawAvatar(instance, now));
-    }
-    animationFrame = requestAnimationFrame(loop);
+  function animateInstance(wrap,now){
+    const a=wrap._aero;if(!a||!a.visible||document.hidden)return;
+    const t=now/1000,state=wrap.dataset.state||activeState,p=profile(state,t),r=a.robot;
+    const rect=wrap.getBoundingClientRect(),cx=rect.left+rect.width/2,cy=rect.top+rect.height/2;
+    const px=clamp((pointer.x-cx)/Math.max(innerWidth,1),-.5,.5),py=clamp((pointer.y-cy)/Math.max(innerHeight,1),-.5,.5);
+    r.root.position.y=p.bob;r.root.rotation.z=p.tilt;r.root.rotation.y=reducedMotion()?0:px*.75;
+    r.head.rotation.x=reducedMotion()?0:-py*.32;r.head.rotation.y=reducedMotion()?0:px*.48;
+    r.left.pivot.rotation.z=p.left;r.right.pivot.rotation.z=p.right;r.right.fore.rotation.z=p.fore;
+    const blink=(t%4.7)>4.52?.08:p.eye;r.eyes.forEach(e=>e.scale.y=blink);
+    r.mouth.scale.set(1,p.mouth,1);r.antenna.rotation.z=Math.sin(t*2.8)*.08;
+    const c=new THREE.Color(p.accent);r.accent.color.lerp(c,.18);r.accent.emissive.lerp(c,.18);r.tip.material=r.accent;r.ring.material=r.accent;r.core.material=r.accent;
+    r.core.rotation.z+=.012;r.ring.rotation.z+=state==='working'||state==='data'?.025:.006;
+    a.renderer.render(a.scene,a.camera);
   }
 
-  function applyPointer() {
-    raf = 0;
-    if (matchMedia('(pointer:coarse)').matches || prefersReducedMotion()) return;
-    instances.forEach(instance => {
-      if (instance.dataset.visible === 'false') return;
-      const r = instance.getBoundingClientRect();
-      const cx = r.left + r.width / 2;
-      const cy = r.top + r.height / 2;
-      const dx = (pointer.x - cx) / Math.max(innerWidth, 1);
-      const dy = (pointer.y - cy) / Math.max(innerHeight, 1);
-      const proximity = Math.max(0, 1 - Math.hypot(pointer.x - cx, pointer.y - cy) / 720);
-      instance.style.setProperty('--aero-ry', `${Math.max(-14, Math.min(14, dx * 34)) * proximity}deg`);
-      instance.style.setProperty('--aero-rx', `${Math.max(-11, Math.min(11, -dy * 28)) * proximity}deg`);
-      instance.style.setProperty('--aero-tx', `${Math.max(-9, Math.min(9, dx * 22)) * proximity}px`);
-      instance.style.setProperty('--aero-ty', `${Math.max(-7, Math.min(7, dy * 18)) * proximity}px`);
-    });
+  function create(source,size='brand'){
+    if(source?.classList?.contains('aero-cgi'))return source;
+    const wrap=document.createElement('span');wrap.className='aero-cgi';wrap.dataset.size=source?.dataset.aeroSize||size;wrap.dataset.state=source?.dataset.aeroState||activeState;wrap.dataset.visible='true';wrap.tabIndex=0;
+    wrap.setAttribute('role','button');wrap.setAttribute('aria-label',source?.getAttribute?.('aria-label')||source?.alt||'Open Aero Discovery Agent');source?.replaceWith(wrap);instances.add(wrap);observer.observe(wrap);
+    wrap.addEventListener('click',()=>window.AeroAgent?.open?.());wrap.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();window.AeroAgent?.open?.()}});
+    if(THREE)makeScene(wrap);else fallbackCanvas(wrap);return wrap;
   }
 
-  const visibilityObserver = new IntersectionObserver(entries => entries.forEach(entry => {
-    entry.target.dataset.visible = String(entry.isIntersecting);
-    if (entry.isIntersecting) drawAvatar(entry.target, performance.now());
-  }), { rootMargin: '160px' });
-
-  document.addEventListener('pointermove', event => {
-    pointer = { x: event.clientX, y: event.clientY };
-    if (!raf) raf = requestAnimationFrame(applyPointer);
-  }, { passive: true });
-
-  window.addEventListener('resize', () => instances.forEach(instance => drawAvatar(instance, performance.now())), { passive: true });
-  document.addEventListener('visibilitychange', () => {
-    if (!document.hidden) instances.forEach(instance => drawAvatar(instance, performance.now()));
-  });
-
-  const observer = new MutationObserver(upgrade);
-  observer.observe(document.documentElement, { childList: true, subtree: true });
-
-  window.AeroCGI = {
-    ready: Promise.resolve(),
-    upgrade,
-    create: make,
-    setState,
-    frames: [...STATES],
-    renderer: 'procedural-canvas-mvp'
-  };
-
-  if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', upgrade, { once: true });
-  } else {
-    upgrade();
+  function upgrade(){
+    document.querySelectorAll('img.brand-avatar,img.wizard-avatar,img.landing-skunkie,img[data-aero-agent],.aero-placeholder[data-aero-agent]').forEach(node=>{if(node.dataset.aeroUpgraded)return;node.dataset.aeroUpgraded='1';const inferred=node.classList.contains('landing-skunkie')?'hero':node.classList.contains('wizard-avatar')?'wizard':'brand';create(node,node.dataset.aeroSize||inferred)});
   }
-  cancelAnimationFrame(animationFrame);
-  animationFrame = requestAnimationFrame(loop);
+
+  function setState(state='idle'){activeState=STATES.has(state)?state:'idle';instances.forEach(i=>i.dataset.state=activeState)}
+  function loop(now){if(!reducedMotion())instances.forEach(i=>animateInstance(i,now));else instances.forEach(i=>animateInstance(i,0));lastTime=now;animationFrame=requestAnimationFrame(loop)}
+  const observer=new IntersectionObserver(entries=>entries.forEach(e=>{e.target.dataset.visible=String(e.isIntersecting);if(e.target._aero)e.target._aero.visible=e.isIntersecting}),{rootMargin:'180px'});
+  const resizeObserver=new ResizeObserver(entries=>entries.forEach(e=>{resizeInstance(e.target);e.target._fallbackDraw?.()}));
+  document.addEventListener('pointermove',e=>pointer={x:e.clientX,y:e.clientY},{passive:true});
+  addEventListener('resize',()=>instances.forEach(resizeInstance),{passive:true});
+
+  const ready=import(THREE_URL).then(mod=>{THREE=mod;instances.forEach(wrap=>{wrap.innerHTML='';makeScene(wrap);resizeObserver.observe(wrap)});return true}).catch(error=>{console.warn('Aero 3D engine unavailable; using accessible 2D fallback.',error);instances.forEach(w=>resizeObserver.observe(w));return false});
+  window.AeroCGI={ready,upgrade,create,setState,frames:[...STATES],engine:'three-webgl'};
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',()=>{upgrade();instances.forEach(w=>resizeObserver.observe(w))},{once:true});else{upgrade();instances.forEach(w=>resizeObserver.observe(w))}
+  animationFrame=requestAnimationFrame(loop);
 })();
