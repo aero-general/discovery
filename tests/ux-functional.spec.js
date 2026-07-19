@@ -60,6 +60,25 @@ test.describe('Aero Discovery UX and functional regression',()=>{
     await expect(panel).not.toHaveClass(/open/);
   });
 
+  test('chat launcher remains a single valid interactive control',async({page})=>{
+    await page.goto('/');
+    const launcher=page.locator('.aero-launcher');
+    await expect(launcher).toBeVisible();
+    await expect(launcher.locator('button,a[href],[role="button"]')).toHaveCount(0);
+    await expect(launcher.locator('.aero-cgi')).toHaveAttribute('aria-hidden','true');
+    await launcher.locator('canvas').click({position:{x:10,y:10}});
+    await expect(page.locator('#aeroAgentChat')).toHaveClass(/open/);
+    await expect(launcher).toHaveAttribute('aria-expanded','true');
+  });
+
+  test('Aero chat closes when the user clicks outside it',async({page})=>{
+    await page.goto('/');
+    await page.locator('.aero-launcher').click();
+    await expect(page.locator('#aeroAgentChat')).toHaveClass(/open/);
+    await page.locator('#landingTitle').click();
+    await expect(page.locator('#aeroAgentChat')).not.toHaveClass(/open/);
+  });
+
   test('Aero answers governed data and workflow questions with correct intents',async({page})=>{
     await page.goto('/');
     await page.evaluate(()=>window.AeroAgent.open());
@@ -114,5 +133,26 @@ test.describe('Aero Discovery UX and functional regression',()=>{
     const box=await start.boundingBox();
     expect(box).not.toBeNull();
     expect(box.height).toBeGreaterThanOrEqual(40);
+  });
+
+  test('mobile chat fits the viewport and exposes usable controls',async({page})=>{
+    await page.goto('/');
+    const launcher=page.locator('.aero-launcher');
+    const launcherBox=await launcher.boundingBox();
+    expect(launcherBox).not.toBeNull();
+    expect(launcherBox.width).toBeGreaterThanOrEqual(56);
+    expect(launcherBox.height).toBeGreaterThanOrEqual(56);
+    await launcher.click();
+    const panel=page.locator('#aeroAgentChat');
+    await expect(panel).toHaveClass(/open/);
+    const panelBox=await panel.boundingBox();
+    const viewport=page.viewportSize();
+    expect(panelBox).not.toBeNull();
+    expect(viewport).not.toBeNull();
+    expect(panelBox.x).toBeGreaterThanOrEqual(-1);
+    expect(panelBox.width).toBeLessThanOrEqual(viewport.width+1);
+    expect(panelBox.height).toBeLessThanOrEqual(viewport.height+1);
+    await expect(page.locator('#aeroMessage')).toBeVisible();
+    await expect(page.locator('.aero-chat-close')).toBeVisible();
   });
 });
