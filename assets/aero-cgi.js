@@ -124,9 +124,21 @@
 
   function create(source,size='brand'){
     if(source?.classList?.contains('aero-cgi'))return source;
-    const wrap=document.createElement('span');wrap.className='aero-cgi';wrap.dataset.size=source?.dataset.aeroSize||size;wrap.dataset.state=source?.dataset.aeroState||activeState;wrap.dataset.visible='true';wrap.tabIndex=0;
-    wrap.setAttribute('role','button');wrap.setAttribute('aria-label',source?.getAttribute?.('aria-label')||source?.alt||'Open Aero Discovery Agent');source?.replaceWith(wrap);instances.add(wrap);observer.observe(wrap);
-    wrap.addEventListener('click',()=>window.AeroAgent?.open?.());wrap.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();window.AeroAgent?.open?.()}});
+    const parentInteractive=source?.closest?.('button,a[href],[role="button"]');
+    const wrap=document.createElement('span');
+    wrap.className='aero-cgi';wrap.dataset.size=source?.dataset.aeroSize||size;wrap.dataset.state=source?.dataset.aeroState||activeState;wrap.dataset.visible='true';
+    if(parentInteractive){
+      wrap.setAttribute('aria-hidden','true');
+      wrap.tabIndex=-1;
+      wrap.dataset.decorative='true';
+    }else{
+      wrap.tabIndex=0;
+      wrap.setAttribute('role','button');
+      wrap.setAttribute('aria-label',source?.getAttribute?.('aria-label')||source?.alt||'Open Aero Discovery Agent');
+      wrap.addEventListener('click',()=>window.AeroAgent?.open?.());
+      wrap.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();window.AeroAgent?.open?.()}});
+    }
+    source?.replaceWith(wrap);instances.add(wrap);observer.observe(wrap);
     if(THREE)makeScene(wrap);else fallbackCanvas(wrap);return wrap;
   }
 
