@@ -1,0 +1,70 @@
+name: UX and Aero functional tests
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ux-functional-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  playwright:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Install Playwright test runner and Chromium
+        shell: bash
+        run: |
+          npm init -y >/dev/null 2>&1
+          npm install --no-save @playwright/test@1.54.1
+          npx playwright install --with-deps chromium
+
+      - name: Validate JavaScript and knowledge schema
+        shell: bash
+        run: |
+          set -euo pipefail
+          find assets -maxdepth 1 -type f -name '*.js' -print0 | sort -z | xargs -0 -n1 node --check
+          node --check tests/ux-functional.spec.js
+          node --check playwright.config.js
+          python3 -m json.tool knowledge/aero-knowledge.json >/dev/null
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          data=json.loads(Path('knowledge/aero-knowledge.json').read_text())
+          topics=data.get('topics',[])
+          assert len(topics) >= 30, f'Expected at least 30 knowledge topics, found {len(topics)}'
+          ids=[topic.get('id') for topic in topics]
+          assert len(ids)==len(set(ids)), 'Knowledge topic IDs must be unique'
+          required={'data-governance-foundation','workflow-current-state','workflow-future-state','project-1-data-baseline','project-2-dashboard','project-3-automation','project-4-operating-model','project-5-ai-poc'}
+          assert required.issubset(set(ids)), f'Missing required topics: {sorted(required-set(ids))}'
+          print(f'Validated {len(topics)} governed Aero knowledge topics')
+          PY
+
+      - name: Run desktop and mobile Chromium journeys
+        run: npx playwright test
+
+      - name: Upload Playwright report and failure evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ux-functional-report
+          path: |
+            playwright-report
+            test-results
+          if-no-files-found: warn
+          retention-days: 14
